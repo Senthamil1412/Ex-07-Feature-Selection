@@ -1,210 +1,201 @@
 # Ex-07-Feature-Selection
-
-# AIM :
-
+## AIM
 To Perform the various feature selection techniques on a dataset and save the data to a file. 
 
-# Explanation :
-
+# Explanation
 Feature selection is to find the best set of features that allows one to build useful models.
 Selecting the best features helps the model to perform well. 
 
-# ALGORITHM :
-
-### STEP 1 :
-
+# ALGORITHM
+### STEP 1
 Read the given Data
-
-### STEP 2 :
-
+### STEP 2
 Clean the Data Set using Data Cleaning Process
-
-### STEP 3 :
-
+### STEP 3
 Apply Feature selection techniques to all the features of the data set
-
-### STEP 4 :
-
+### STEP 4
 Save the data to the file
 
-# CODE :
 
-## DEVELOPED BY  : SENTHAMIL SELVAN G
-## REG NO : 212222230139
-
-## importing library:
+# CODE
 ```
+Developed By: G SENTHAMIL SELVAN
+Register No: 212222230139
+```
+```python
+from sklearn.datasets import load_boston
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
-```
-## data loading :
-```
-data = pd.read_csv('/content/titanic_dataset.csv')
-data
-data.tail()
-data.isnull().sum()
-data.describe()
-```
-
-## now, we are checking start with a pairplot, and check for missing values :
-```
-sns.heatmap(data.isnull(),cbar=False)
-```
-
-## Data Cleaning and Data Drop Process :
-```
-data['Fare'] = data['Fare'].fillna(data['Fare'].dropna().median())
-data['Age'] = data['Age'].fillna(data['Age'].dropna().median())
-```
-
-## Change to categoric column to numeric :
-```
-data.loc[data['Sex']=='male','Sex']=0
-data.loc[data['Sex']=='female','Sex']=1
-```
-
-## instead of nan values :
-```
-data['Embarked']=data['Embarked'].fillna('S')
-```
-
-## Change to categoric column to numeric :
-```
-data.loc[data['Embarked']=='S','Embarked']=0
-data.loc[data['Embarked']=='C','Embarked']=1
-data.loc[data['Embarked']=='Q','Embarked']=2
-```
-
-## Drop unnecessary columns :
-```
-drop_elements = ['Name','Cabin','Ticket']
-data = data.drop(drop_elements, axis=1)
-
-data.head(11)
-```
-## heatmap for train dataset :
-```
-f,ax = plt.subplots(figsize=(5, 5))
-sns.heatmap(data.corr(), annot=True, linewidths=.5, fmt= '.1f',ax=ax)
-```
-
-## Now, data is clean and read to a analyze :
-```
-sns.heatmap(data.isnull(),cbar=False)
-```
-
-## how many people survived or not... %60 percent died %40 percent survived :
-```
-fig = plt.figure(figsize=(18,6))
-data.Survived.value_counts(normalize=True).plot(kind='bar',alpha=0.5)
-plt.show()
-```
-
-## Age with survived :
-```
-plt.scatter(data.Survived, data.Age, alpha=0.1)
-plt.title("Age with Survived")
-plt.show()
-```
-
-## Count the pessenger class :
-```
-fig = plt.figure(figsize=(18,6))
-data.Pclass.value_counts(normalize=True).plot(kind='bar',alpha=0.5)
-plt.show()
-
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import chi2
-
-X = data.drop("Survived",axis=1)
-y = data["Survived"]
-
-mdlsel = SelectKBest(chi2, k=5)
-mdlsel.fit(X,y)
-ix = mdlsel.get_support()
-data2 = pd.DataFrame(mdlsel.transform(X), columns = X.columns.values[ix]) # en iyi leri aldi... 7 tane...
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+import seaborn as sns
+import statsmodels.api as sm
+%matplotlib inline
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import RidgeCV, LassoCV, Ridge, Lasso
+```
+```python
+x = load_boston()
+df = pd.DataFrame(x.data, columns = x.feature_names)
+df["PRICE"] = x.target
+X = df.drop("PRICE",1) 
+y = df["PRICE"]          
+df.head(10)
+```
+```python
+plt.figure(figsize=(12,10))
+cor = df.corr()
+sns.heatmap(cor, annot=True, cmap=plt.cm.Reds)
+plt.show()
+```
+```python
+cor_target = abs(cor["PRICE"])
+relevant_features = cor_target[cor_target>0.5]
+relevant_features
+```
+```python
+print(df[["LSTAT","PTRATIO"]].corr())
+print(df[["RM","LSTAT"]].corr())
+print(df[["RM","PTRATIO"]].corr())
+print(df[["PRICE","PTRATIO"]].corr())
+```
+```python
+X_1 = sm.add_constant(X)
+model = sm.OLS(y,X_1).fit()
+model.pvalues
+```
+```python
+cols = list(X.columns)
+pmax = 1
+while (len(cols)>0):
+    p= []
+    X_1 = X[cols]
+    X_1 = sm.add_constant(X_1)
+    model = sm.OLS(y,X_1).fit()
+    p = pd.Series(model.pvalues.values[1:],index = cols)      
+    pmax = max(p)
+    feature_with_p_max = p.idxmax()
+    if(pmax>0.05):
+        cols.remove(feature_with_p_max)
+    else:
+        break
+selected_features_BE = cols
+print(selected_features_BE)
+```
+```python
+model = LinearRegression()
+#Initializing RFE model
+rfe = RFE(model, 7)
+#Transforming data using RFE
+X_rfe = rfe.fit_transform(X,y)  
+#Fitting the data to model
+model.fit(X_rfe,y)
+print(rfe.support_)
+print(rfe.ranking_)
+```
+```python
+nof_list=np.arange(1,13)            
+high_score=0
+nof=0           
+score_list =[]
+for n in range(len(nof_list)):
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size = 0.3, random_state = 0)
+    model = LinearRegression()
+    rfe = RFE(model,nof_list[n])
+    X_train_rfe = rfe.fit_transform(X_train,y_train)
+    X_test_rfe = rfe.transform(X_test)
+    model.fit(X_train_rfe,y_train)
+    score = model.score(X_test_rfe,y_test)
+    score_list.append(score)
+    if(score>high_score):
+        high_score = score
+        nof = nof_list[n]
+print("Optimum number of features: %d" %nof)
+print("Score with %d features: %f" % (nof, high_score))
+```
+```python
+cols = list(X.columns)
+model = LinearRegression()
+rfe = RFE(model, 10)             
+X_rfe = rfe.fit_transform(X,y)  
+model.fit(X_rfe,y)              
+temp = pd.Series(rfe.support_,index = cols)
+selected_features_rfe = temp[temp==True].index
+print(selected_features_rfe)
+```
+```python
+reg = LassoCV()
+reg.fit(X, y)
+print("Best alpha using built-in LassoCV: %f" % reg.alpha_)
+print("Best score using built-in LassoCV: %f" %reg.score(X,y))
+coef = pd.Series(reg.coef_, index = X.columns)
+```
+```python
+print("Lasso picked " + str(sum(coef != 0)) + " variables and eliminated the other " +  str(sum(coef == 0)) + " variables")
+imp_coef = coef.sort_values()
+import matplotlib
+matplotlib.rcParams['figure.figsize'] = (8.0, 10.0)
+imp_coef.plot(kind = "barh")
+plt.title("Feature importance using Lasso Model")
+```
+# OUTPUT
 
-target = data['Survived'].values
-data_features_names = ['Pclass','Sex','SibSp','Parch','Fare','Embarked','Age']
-features = data[data_features_names].values
+```yaml
+Feature selection can be done in multiple ways but there are broadly 3 categories of it:
+1. Filter Method
+2. Wrapper Method
+3. Embedded Method
 ```
 
-## Build test and training test :
+DATASET:
+
+![d1](https://user-images.githubusercontent.com/119559844/234180495-7ac5423e-bbcb-4f23-9fbd-e2e0213e8c7c.png)
+
+FILTER METHOD:
 ```
-X_train,X_test,y_train,y_test = train_test_split(features,target,test_size=0.3,random_state=42)
-
-my_forest = RandomForestClassifier(max_depth=5, min_samples_split=10, n_estimators=500, random_state=5,criterion = 'entropy')
-
-
-my_forest_ = my_forest.fit(X_train,y_train)
-target_predict=my_forest_.predict(X_test)
-
-print("Random forest score: ",accuracy_score(y_test,target_predict))
-
-from sklearn.metrics import mean_squared_error, r2_score
-print ("MSE    :",mean_squared_error(y_test,target_predict))
-print ("R2     :",r2_score(y_test,target_predict))
+The filtering here is done using correlation matrix and it is most commonly done using Pearson correlation.
 ```
+HIGHLY CORRELATED FEATURE WITH OUTPUT VARIABLE PRICE:
 
-# OUTPUT :
+![d2 ](https://user-images.githubusercontent.com/119559844/234180584-bd55abbe-3f20-4b7b-8748-871fb841063a.png)
 
-## data.tail() :
+CHECKING CORRELATION WITH EACH OTHER:
 
-![Screenshot 2023-05-13 113321](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/3a212853-0645-43f2-bec1-04bff2466371)
+![d3 ](https://user-images.githubusercontent.com/119559844/234180593-46ca847e-eea2-4d2a-b3fe-2c0afccdbc25.png)
 
-## Null values :
+WRAPPER METHOD:
 
-![Screenshot 2023-05-13 114024](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/d7c8cb0d-b35a-4831-b951-1feec255aef6)
+```
+Wrapper Method is an iterative and computationally expensive process but it is more accurate than the filter method.
 
+There are different wrapper methods such as Backward Elimination, Forward Selection, Bidirectional Elimination and RFE.
+```
+BACKWARD ELIMINATION:
 
-## Describe :
+![d4](https://user-images.githubusercontent.com/119559844/234180602-2a9effbc-7fdd-492a-bc5b-6ce830880990.png)
 
-![Screenshot 2023-05-13 110813](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/ac0e37f2-7c82-4319-9d9a-a7963275e735)
+![d5](https://user-images.githubusercontent.com/119559844/234180613-3eb9cec5-43e2-43fc-9bd3-0b7a66c4bb20.png)
 
-## Missing values :
+RECURSIVE FEATURE ELIMINATION(RFE):
 
-![Screenshot 2023-05-13 112027](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/a53f3eaa-fd2a-4ec0-a3a7-57cbea215ba2)
+![d6](https://user-images.githubusercontent.com/119559844/234180624-16e2d1dc-8371-4766-9f50-932fa8264c50.png)
 
-## Data after cleaning :
+NUMBER OF FEATURE HAVING HIGH ACCURACY:
 
-![Screenshot 2023-05-13 112202](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/3e1c30fd-00cd-4bda-859f-c77db419c4fe)
+![d7](https://user-images.githubusercontent.com/119559844/234180627-2a86e228-9d2f-40de-ae60-3825826dfd8d.png)
 
-## Data on Heatmap :
+FINAL SET OF FEATURE:
 
-![Screenshot 2023-05-13 112313](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/3efaf8fc-2c9c-4b24-a4ed-8289876206c7)
+![d8](https://user-images.githubusercontent.com/119559844/234180638-beaa20ed-a6a5-4303-b5e0-6e601a53a9ae.png)
 
-## Report of (people survived & Died) :
+EMBEDDED METHOD:
 
-![Screenshot 2023-05-13 112421](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/70153d84-ebeb-44c5-990e-efe0ad71cdc9)
-
-## Cleaned Null values :
-
-![Screenshot 2023-05-13 112510](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/bdaaf307-4925-4a40-8d99-9d5a0b38aa10)
-
-
-## Report of Survived People's Age :
-
-![Screenshot 2023-05-13 112748](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/469ca287-3157-40ee-aee8-9125fc99fc20)
-
-## Report of pessengers :
-
-![Screenshot 2023-05-13 112851](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/2051beb6-b971-4764-860f-05897e1a3ea3)
-
-## Report :
-
-![Screenshot 2023-05-13 112908](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/f148b1ba-669b-4050-8a30-85d0db5383ea)
+![d9](https://user-images.githubusercontent.com/119559844/234180646-6198293f-0ece-4861-80eb-2d937eed6ea1.png)
 
 
-![Screenshot 2023-05-13 112914](https://github.com/Abrinnisha6/Ex-07-Feature-Selection/assets/118889454/9eb93996-4675-4619-813a-2c45869cbb76)
 
+RESULT:
 
-# RESULT :
-
-Thus, Sucessfully performed the various feature selection techniques on a given dataset.
+Various feature selection techniques have been performed on a given dataset successfully.
